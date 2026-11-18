@@ -97,6 +97,14 @@ details.how p{margin:0 0 10px}
     <button class="btn sec hidden" id="homeExtra">Hacer otra lección ahora</button>
   </div>
 
+  <div class="card hidden" id="freeCard">
+    <h3>Repaso libre</h3>
+    <p class="small" style="margin:6px 0 12px">¿Tienes tiempo de sobra? Practica palabras de días anteriores. No cambia tu calendario, salvo las que falles: esas vuelven mañana.</p>
+    <button class="btn sec sm" id="freeY"></button>
+    <button class="btn sec sm" id="freeW"></button>
+    <button class="btn sec sm" id="freeA"></button>
+  </div>
+
   <div class="card hidden" id="testCard">
     <h3>Test de control <span class="chip retry hidden" id="testDue" style="margin-left:6px">Toca esta semana</span></h3>
     <p class="small" id="testText" style="margin:6px 0 12px"></p>
@@ -273,7 +281,7 @@ function load() {
   } catch (e) { return blank(); }
 }
 function cleanSession(x, ok) {
-  if (!x || x.date !== today() || !["daily", "extra", "review", "repeat", "hard", "test"].includes(x.kind) || !Array.isArray(x.stages)) return null;
+  if (!x || x.date !== today() || !["daily", "extra", "review", "repeat", "hard", "free", "test"].includes(x.kind) || !Array.isArray(x.stages)) return null;
   const stages = [];
   for (const st of x.stages) {
     if (!st) continue;
@@ -369,6 +377,11 @@ function renderHome() {
   $("sM").style.width = (c.m / TOTAL * 100) + "%"; $("sA").style.width = (c.a / TOTAL * 100) + "%"; $("sL").style.width = (c.l / TOTAL * 100) + "%";
   $("nM").textContent = c.m; $("nA").textContent = c.a; $("nL").textContent = c.l; $("nU").textContent = c.u;
 
+  const fy = freeIds(1).length, fw = freeIds(7).length, fa = freeIds(null).length, fc = $("freeCard");
+  fc.classList.toggle("hidden", !fa || !!(s && s.kind !== "test" && false));
+  [["freeY", "Las de ayer", fy, 1], ["freeW", "Los últimos 7 días", fw, 7], ["freeA", "Al azar entre todas las que ya has visto", fa, null]].forEach(([id, txt, n, d]) => {
+    const b = $(id); b.textContent = txt + " (" + Math.min(n, FREE_MAX) + (n > FREE_MAX ? " de " + n : "") + ")"; b.disabled = !n; b.onclick = () => startFree(d);
+  });
   const hard = hardIds(), hb = $("hardBtn");
   hb.classList.toggle("hidden", !hard.length);
   hb.textContent = "Repasar las que me cuestan (" + hard.length + ")";
@@ -424,6 +437,11 @@ function startExtra() {
 }
 function startReview() { const rev = dueIds().slice(0, DAILY_MAX); if (rev.length) begin("review", [cardsStage("Repaso", rev, "review")], -1); }
 function startRepeat(k) { begin("repeat", [studyStage("Repaso de la lección", LES[k].ids, false), cardsStage("Práctica", LES[k].ids, "practice")], k); }
+const FREE_MAX = 50;   // tarjetas por repaso libre
+function freeIds(days) {   // palabras vistas en días anteriores (days = cuántos días atrás; null = todas)
+  return Object.keys(state.w).map(Number).filter(i => { const a = daysBetween(state.w[i].i, today()); return a >= 1 && (days === null || a <= days); });
+}
+function startFree(days) { const ids = shuffle(freeIds(days)).slice(0, FREE_MAX); if (ids.length) begin("free", [cardsStage("Repaso libre", ids, "practice")], -1); }
 function startHard() { const ids = hardIds().slice(0, PER_DAY); if (ids.length) begin("hard", [cardsStage("Las que me cuestan", ids, "practice")], -1); }
 
 function openSession() {
